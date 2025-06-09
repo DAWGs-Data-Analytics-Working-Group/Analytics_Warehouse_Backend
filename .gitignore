@@ -1,3 +1,7 @@
-/planning_data
-/archive
+/2_planning_processing_files
+/1_inputs
+/5_database
+/3_excel_work
+/4_scripts/python/planning/archive/processed_results.csv
+/logs
 python/.Rhistory
