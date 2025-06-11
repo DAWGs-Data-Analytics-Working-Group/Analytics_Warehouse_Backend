@@ -30,8 +30,6 @@ logging.basicConfig(
 logging.info("Main script logging configured.")
 logging.info(f"Logs are being saved to: {log_filename}")
 
-# ... (rest of your main_script.py code) ...
-
 if __name__ == "__main__":
     # Add a StreamHandler to also print to console while logging to file
     # This is useful so you see output in real-time

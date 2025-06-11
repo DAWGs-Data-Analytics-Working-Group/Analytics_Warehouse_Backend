@@ -8,8 +8,6 @@ import pytz
 import logging
 
 # --- Configuration ---
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 root_folder = Path(__file__).resolve().parents[4] # More robust way to get root folder
 planning_data = root_folder / 'planning'
@@ -23,10 +21,10 @@ parquet_intermediate_location = aware_folder / '2_planning_processing_files'
 
 clear_folder = traffic_email_path / 'clear'
 processed_traffic_email_folder = traffic_email_path / 'processed'
-processed_phase2_sensor_folder = phase2_sensor_path / 'processed'
+# processed_phase2_sensor_folder = phase2_sensor_path / 'processed'
 
 # Ensure output directories exist
-for folder in [clear_folder, processed_traffic_email_folder, processed_phase2_sensor_folder,
+for folder in [clear_folder, processed_traffic_email_folder,
                parquet_intermediate_location / 'p1_sensors_parquet',
                parquet_intermediate_location / 'p2_sensors_parquet',
                parquet_intermediate_location / 'veh_parquet']:
@@ -72,15 +70,16 @@ def process_traffic_data():
 
     # Discover and categorize files
     all_traffic_files = [f for f in os.listdir(traffic_email_path) if f.lower().endswith(('.xlsx', '.xlsm', '.pdf'))]
-    all_p2_sensor_files = [f for f in os.listdir(phase2_sensor_path) if f.lower().endswith(('.xlsx', '.xlsm'))]
+    # all_p2_sensor_files = [f for f in os.listdir(phase2_sensor_path) if f.lower().endswith(('.xlsx', '.xlsm'))]
 
     excel_files = [f for f in all_traffic_files if f.lower().endswith(('.xlsx', '.xlsm'))]
     pdf_files = [f for f in all_traffic_files if f.lower().endswith('.pdf')]
-#'MONTHLY' in f.upper() or
+
     pedestrian_counts = [f for f in excel_files if  'P1' in f.upper() or 'phase' in f.upper()]
+    all_p2_sensor_files = [f for f in excel_files if  'P2' in f.upper() or 'phase' in f.upper()]
     veh_report_files = [f for f in excel_files if 'WTC_VEH_REPORT' in f.upper()]
 
-    other_excel_files = [f for f in excel_files if f not in pedestrian_counts and f not in veh_report_files]
+    other_excel_files = [f for f in excel_files if f not in pedestrian_counts and f not in veh_report_files and f not in all_p2_sensor_files]
 
     files_to_clear = pdf_files + other_excel_files
 
@@ -127,8 +126,8 @@ def process_traffic_data():
         logging.info("No P2 sensor files found to process.")
 
     for file in all_p2_sensor_files:
-        file_path = phase2_sensor_path / file
-        arch_path = processed_phase2_sensor_folder / file
+        file_path = traffic_email_path / file
+        arch_path = processed_traffic_email_folder / file
         parquet_filename = parquet_intermediate_location / 'p2_sensors_parquet' / f"{file.rsplit('.', 1)[0]}.parquet"
 
         df = None
