@@ -256,7 +256,7 @@ def append_archive_load_data(root_folder: Union[str, Path]):
             temp_p1_df["Time_Bucket"] = temp_p1_df["From"].dt.floor("30min")
             grouped_p1_df = temp_p1_df.groupby("Time_Bucket")[p1_numeric_cols].sum().reset_index()
             long_df_p1 = grouped_p1_df.melt(id_vars=["Time_Bucket"], var_name="Location", value_name="Count")
-            long_df_p1['Sensor_Type'] = 'P1'
+            # long_df_p1['Sensor_Type'] = 'P1'
         else:
             logging.warning("No numeric columns found in P1 data for melting.")
     else:
@@ -270,7 +270,7 @@ def append_archive_load_data(root_folder: Union[str, Path]):
             temp_p2_df["Time_Bucket"] = temp_p2_df["From"].dt.floor("30min")
             grouped_p2_df = temp_p2_df.groupby("Time_Bucket")[p2_numeric_cols].sum().reset_index()
             long_df_p2 = grouped_p2_df.melt(id_vars=["Time_Bucket"], var_name="Location", value_name="Count")
-            long_df_p2['Sensor_Type'] = 'P2'
+            # long_df_p2['Sensor_Type'] = 'P2'
         else:
             logging.warning("No numeric columns found in P2 data for melting.")
     else:
@@ -287,6 +287,7 @@ def append_archive_load_data(root_folder: Union[str, Path]):
         combined_long_df['date'] = combined_long_df['Time_Bucket'].dt.date
         combined_long_df['time'] = combined_long_df['Time_Bucket'].dt.time
         combined_long_df = combined_long_df.drop(columns=['Time_Bucket'])
+        combined_long_df = combined_long_df.drop_duplicates().sort_values(by="date").reset_index(drop=True)
         combined_long_df.to_parquet(database_location / "database_cleaned_long.parquet", engine="pyarrow", index=False)
         logging.info(f"Saved combined long format database with {len(combined_long_df)} records.")
     else:
