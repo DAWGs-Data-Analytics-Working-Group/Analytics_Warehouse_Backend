@@ -94,7 +94,7 @@ def _clean_and_append_p1_p2(new_df: Optional[pd.DataFrame], existing_df: pd.Data
         # Apply mask only if there are columns to mask (i.e., beyond 'From', 'To', etc.)
         if temp_df.shape[1] > 2: # Assuming first two columns are 'From', 'To' or similar identifiers
              numeric_cols = temp_df.select_dtypes(include=np.number).columns
-             temp_df[numeric_cols] = temp_df[numeric_cols].mask(temp_df[numeric_cols] > 500, np.nan)
+             temp_df[numeric_cols] = temp_df[numeric_cols].mask(temp_df[numeric_cols] > 4000, np.nan)
         
         combined_df = pd.concat([temp_df, existing_df], ignore_index=True)
         logging.info(f"Appended {len(temp_df)} new records to database.")
@@ -102,7 +102,9 @@ def _clean_and_append_p1_p2(new_df: Optional[pd.DataFrame], existing_df: pd.Data
         logging.info("No new P1/P2 data to append.")
 
     # Always clean and sort the combined database
-    combined_df = combined_df.drop_duplicates().sort_values(by="From").reset_index(drop=True)
+    combined_df = combined_df.groupby(["From", "To Time"], as_index=False).mean().sort_values("From")
+    # combined_df = combined_df.drop_duplicates().sort_values(by="From").reset_index(drop=True)
+
     return combined_df
 
 def _clean_and_append_veh(new_df: Optional[pd.DataFrame], existing_df: pd.DataFrame) -> pd.DataFrame:
@@ -120,6 +122,7 @@ def _clean_and_append_veh(new_df: Optional[pd.DataFrame], existing_df: pd.DataFr
 
     # Always clean and sort the combined database
     combined_df = combined_df.drop_duplicates().sort_values(by=["arrive_date", "arrive_time"]).reset_index(drop=True)
+    
     return combined_df
 
 # --- Main Append/Archive/Load Function ---
@@ -192,7 +195,7 @@ def append_archive_load_data(root_folder: Union[str, Path]):
     # Additional P2 specific cleaning (masking values > 500)
     if combined_p2_df.shape[1] > 2:
         numeric_cols_p2 = combined_p2_df.select_dtypes(include=np.number).columns
-        combined_p2_df[numeric_cols_p2] = combined_p2_df[numeric_cols_p2].mask(combined_p2_df[numeric_cols_p2] > 500, np.nan)
+        combined_p2_df[numeric_cols_p2] = combined_p2_df[numeric_cols_p2].mask(combined_p2_df[numeric_cols_p2] > 4000, np.nan)
 
     combined_p2_df.to_parquet(database_location / "database_cleaned_p2.parquet", engine="pyarrow", index=False)
     logging.info(f"Saved updated P2 database with {len(combined_p2_df)} records.")
@@ -206,47 +209,6 @@ def append_archive_load_data(root_folder: Union[str, Path]):
     if 'From' in combined_p2_df.columns: # Assuming 'To Time' in your original code referred to 'From' in P2 for merge
         combined_p2_df['From'] = pd.to_datetime(combined_p2_df['From'], errors='coerce')
 
-    # Select relevant columns for P2 to merge with P1. This assumes P1 has 'From' and 'To' as common keys.
-    # The original code's `different_cols` and `required_cols` logic was a bit unusual for a merge.
-    # It seems like you want to merge P1 and P2 based on 'From' (datetime) and 'To' (location/grouping).
-    # Let's clarify this merge strategy: P1 has 'From' and 'To' (time and location). P2 also has 'From' and other counts.
-    # If 'From' is the time, and columns are locations, then a simple merge might not be what's intended.
-    # The previous notebook merged 'combined_p1_df' and 'combined_p2_df' on ['From', 'To Time']
-    # This implies P2 also has a 'To Time' column, which it does not in the previous code.
-    # Let's assume 'From' is the primary key for the time bucket and we want to aggregate counts.
-
-    # Re-reading: "different_cols = combined_p2_df.columns.difference(combined_p1_df.columns)"
-    # and "combined_p2_df = combined_p2_df[different_cols]" followed by a re-selection from `df_database_p2`
-    # This suggests P2 data might be treated as *additional* counts for *existing* P1 time/location entries.
-    # This is a bit complex. Let's simplify the combination to aggregate counts.
-
-    # Let's refine the combining logic based on the intent of creating `long_df` for BI.
-    # The goal is to sum counts by `Time_Bucket` and `Location`.
-    # P1 and P2 counts are separate by nature of the sensors.
-    # A more common approach is to treat P1 and P2 as different "types" of counts
-    # and combine them after their individual aggregation.
-
-    # For now, let's stick to the spirit of the previous notebook's merge, but make it work.
-    # Assuming `To Time` in P1 was a typo for `To`
-    
-    # Ensure "To" column exists in P1, and create a dummy if not for merge flexibility.
-    # If "To" is meant as a location, ensure it's comparable.
-    # Given your original code:
-    # combined_df = pd.merge(combined_p1_df, combined_p2_df, how='left', on=['From', 'To Time'])
-    # This `To Time` seems like a misnomer for `To`. Let's use `From` for time-alignment and assume location differences.
-
-    # Let's use the 'From' column as the time identifier and then pivot.
-    # This implies both P1 and P2 dataframes have 'From' as a datetime-like column and other columns are counts.
-    
-    # We need to ensure that 'From' column is properly handled for combination, which it is already.
-    # The original notebook's combination logic was a bit confusing, specifically:
-    # combined_p2_df = df_database_p2[combined_cols] after initial processing
-    # This would overwrite the just processed `combined_p2_df` with the old database data.
-    # Let's assume the intent was to combine the _newly processed_ P1 and P2 data.
-
-    # A more robust way to combine P1 and P2 for BI is to process them separately,
-    # then bring them to a common format and concatenate, or simply use both in BI directly.
-    # If the goal is a single 'long' dataframe of ALL counts from P1 and P2, we should melt each, then concat.
 
     long_df_p1 = None
     if 'From' in combined_p1_df.columns and combined_p1_df['From'].notna().any():
