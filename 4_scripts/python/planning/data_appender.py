@@ -107,23 +107,23 @@ def _clean_and_append_p1_p2(new_df: Optional[pd.DataFrame], existing_df: pd.Data
 
     return combined_df
 
-def _clean_and_append_veh(new_df: Optional[pd.DataFrame], existing_df: pd.DataFrame) -> pd.DataFrame:
-    """Cleans new Vehicle data, removes duplicates, and appends to the existing database."""
-    combined_df = existing_df
+# def _clean_and_append_veh(new_df: Optional[pd.DataFrame], existing_df: pd.DataFrame) -> pd.DataFrame:
+#     """Cleans new Vehicle data, removes duplicates, and appends to the existing database."""
+#     combined_df = existing_df
 
-    if new_df is not None and not new_df.empty:
-        # Ensure consistent column names before concat for veh_df if necessary
-        # (This was handled in the previous script 'process_traffic_data')
+#     if new_df is not None and not new_df.empty:
+#         # Ensure consistent column names before concat for veh_df if necessary
+#         # (This was handled in the previous script 'process_traffic_data')
         
-        combined_df = pd.concat([new_df, existing_df], ignore_index=True)
-        logging.info(f"Appended {len(new_df)} new records to vehicle database.")
-    else:
-        logging.info("No new Vehicle data to append.")
+#         combined_df = pd.concat([new_df, existing_df], ignore_index=True)
+#         logging.info(f"Appended {len(new_df)} new records to vehicle database.")
+#     else:
+#         logging.info("No new Vehicle data to append.")
 
-    # Always clean and sort the combined database
-    combined_df = combined_df.drop_duplicates().sort_values(by=["arrive_date", "arrive_time"]).reset_index(drop=True)
+#     # Always clean and sort the combined database
+#     combined_df = combined_df.drop_duplicates().sort_values(by=["arrive_date", "arrive_time"]).reset_index(drop=True)
     
-    return combined_df
+#     return combined_df
 
 # --- Main Append/Archive/Load Function ---
 
@@ -152,9 +152,9 @@ def append_archive_load_data(root_folder: Union[str, Path]):
     # --- Load Column Names ---
     cols_p1 = _load_column_names(column_names_location / "columns.csv")
     cols_p2 = _load_column_names(column_names_location / "p2_columns.csv")
-    cols_veh = _load_column_names(column_names_location / "veh_cols.csv")
+    # cols_veh = _load_column_names(column_names_location / "veh_cols.csv")
 
-    if not all([cols_p1, cols_p2, cols_veh]):
+    if not all([cols_p1, cols_p2]): #, cols_veh
         logging.critical("Failed to load all required column names for appending. Exiting.")
         return
 
@@ -162,15 +162,15 @@ def append_archive_load_data(root_folder: Union[str, Path]):
     logging.info("Reading current databases and archiving old versions...")
     df_database_p1 = _read_parquet_with_columns(database_location / 'database_cleaned_p1.parquet', columns=cols_p1)
     df_database_p2 = _read_parquet_with_columns(database_location / 'database_cleaned_p2.parquet', columns=cols_p2)
-    df_database_veh = _read_parquet_with_columns(database_location / 'database_veh.parquet') # veh_cols are for ingestion, not the final df structure
+    # df_database_veh = _read_parquet_with_columns(database_location / 'database_veh.parquet') # veh_cols are for ingestion, not the final df structure
 
-    if df_database_p1 is None or df_database_p2 is None or df_database_veh is None:
+    if df_database_p1 is None or df_database_p2 is None: #or df_database_veh is None:
         logging.critical("Failed to load one or more existing databases. Cannot proceed with appending.")
         return
 
     _archive_dataframe(df_database_p1, database_location, "database_cleaned_p1", current_date_str)
     _archive_dataframe(df_database_p2, database_location, "database_cleaned_p2", current_date_str)
-    _archive_dataframe(df_database_veh, database_location, "database_veh", current_date_str)
+    # _archive_dataframe(df_database_veh, database_location, "database_veh", current_date_str)
 
     # --- Process New P1 Sensor Data ---
     logging.info("\n--- Processing new P1 sensor data ---")
@@ -256,17 +256,17 @@ def append_archive_load_data(root_folder: Union[str, Path]):
         logging.warning("No valid P1 or P2 data to create combined long format database.")
 
 
-    # --- Process New Vehicle Data ---
-    logging.info("\n--- Processing new Vehicle data ---")
-    new_veh_df = _process_new_parquet_files(
-        parquet_intermediate_location / "veh_parquet",
-        parquet_intermediate_location / "veh_parquet" / "processed"
-    )
-    combined_veh_df = _clean_and_append_veh(new_veh_df, df_database_veh)
-    combined_veh_df.to_parquet(database_location / "database_veh.parquet", engine="pyarrow", index=False)
-    logging.info(f"Saved updated Vehicle database with {len(combined_veh_df)} records.")
+    # # --- Process New Vehicle Data ---
+    # logging.info("\n--- Processing new Vehicle data ---")
+    # new_veh_df = _process_new_parquet_files(
+    #     parquet_intermediate_location / "veh_parquet",
+    #     parquet_intermediate_location / "veh_parquet" / "processed"
+    # )
+    # combined_veh_df = _clean_and_append_veh(new_veh_df, df_database_veh)
+    # combined_veh_df.to_parquet(database_location / "database_veh.parquet", engine="pyarrow", index=False)
+    # logging.info(f"Saved updated Vehicle database with {len(combined_veh_df)} records.")
 
-    logging.info("\n--- Data append, archive, and load process complete. ---")
+    # logging.info("\n--- Data append, archive, and load process complete. ---")
 
 
 # Optional: Add a simple execution block if this file is run directly for testing

@@ -184,12 +184,21 @@ def process_daily_data(root_folder: Union[str, Path]):
     try:
         date_range = pd.date_range(start=min_date, end=max_date)
 
+        iso = date_range.isocalendar()
+
         df_calendar = pd.DataFrame({
             "date_id": date_range.date,
-            "week_of_year": date_range.isocalendar().week,
+
+            # ISO calendar (NEW)
+            "iso_year": iso.year.astype(int),
+            "iso_week": iso.week.astype(int),
+            "iso_day": iso.day.astype(int),  # optional but useful (Mon=1)
+
+            # Existing fields
+            "week_of_year": iso.week.astype(int),  # if you want to keep this
             "day_of_year": date_range.dayofyear,
             "day_of_week": date_range.strftime('%A'),
-            "day_of_week_num": date_range.weekday,
+            "day_of_week_num": date_range.weekday,  # Mon=0 .. Sun=6
             "month_num": date_range.month,
             "day_type": ['Weekend' if d.weekday() in [5, 6] else 'Weekday' for d in date_range],
             "month_name": date_range.strftime('%B'),
